@@ -15,12 +15,12 @@ pipeline{
         }
         stage('Checkout from Git'){
             steps{
-                git branch: 'main', url: 'https://github.com/gitaccountname/Netflix-Project1.git'
+                git branch: 'main', url: 'https://github.com/tirucloud/Netflix-Project1.git'
             }
         }
-        stage("sonarqube Analysis "){
+        stage("Sonarqube Analysis "){
             steps{
-                withsonarQubeEnv('sonar-server') {
+                withSonarQubeEnv('sonar-server') {
                     sh ''' $SCANNER_HOME/bin/sonar-scanner -Dsonar.projectName=Netflix \
                     -Dsonar.projectKey=Netflix '''
                 }
@@ -29,16 +29,17 @@ pipeline{
         stage("quality gate"){
            steps {
                 script {
-                    waitForQualityGate abortPipeline: false, credentialsId: 'sonar-token' 
+                    waitForQualityGate abortPipeline: false, credentialsId: 'sonar-token'
                 }
-            } 
+            }
         }
         stage('Install Dependencies') {
             steps {
                 sh "npm install"
             }
         }
-       stage('TRIVY FS SCAN') {
+        
+        stage('TRIVY FS SCAN') {
             steps {
                 sh "trivy fs . > trivyfs.txt"
             }
@@ -46,26 +47,25 @@ pipeline{
         stage("Docker Build & Push"){
             steps{
                 script{
-                   withDockerRegistry(credentialsId: 'docker', toolName: 'docker'){   
-                       sh "docker build --build-arg TMDB_V3_API_KEY="" -t netflix ."
-                       sh "docker tag netflix dockeraccountname/netflix:latest "
-                       sh "docker push dockeraccountname/netflix:latest "
+                   withDockerRegistry(credentialsId: 'docker', toolName: 'docker'){
+                       sh "docker build --build-arg TMDB_V3_API_KEY=a8fd04e6878186a44e8102ae29c160ad -t netflix ."
+                       sh "docker tag netflix tirucloud/netflix:latest "
+                       sh "docker push tirucloud/netflix:latest "
                     }
                 }
             }
         }
         stage("TRIVY"){
             steps{
-                sh "trivy image dockeraccountname/netflix:latest > trivyimage.txt" 
+                sh "trivy image tirucloud/netflix:latest > trivyimage.txt"
             }
         }
         stage('Deploy to container'){
             steps{
-                sh 'docker run -d -p 8081:80 dockeraccountname/netflix:latest'
+                sh 'docker run -d --name netflix -p 8081:80 tirucloud/netflix:latest'
             }
         }
-       
-
+        
     }
     post {
      always {
@@ -74,9 +74,8 @@ pipeline{
             body: "Project: ${env.JOB_NAME}<br/>" +
                 "Build Number: ${env.BUILD_NUMBER}<br/>" +
                 "URL: ${env.BUILD_URL}<br/>",
-            to: 'gmailaccountname@gmail.com',
+            to: 'tirucloud@gmail.com',
             attachmentsPattern: 'trivyfs.txt,trivyimage.txt'
         }
     }
 }
-
